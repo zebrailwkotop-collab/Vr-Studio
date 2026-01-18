@@ -14,6 +14,16 @@ public class MixerUI : MonoBehaviour
     public TrackRowUI drumsRow;
     public TrackRowUI keysRow;
 
+    [Header("Instrument Selection Buttons")]
+    public VRButton selectGuitarButton;
+    public VRButton selectBassButton;
+    public VRButton selectDrumsButton;
+    public VRButton selectKeysButton;
+    public InstrumentIdentity guitarInstrument;
+    public InstrumentIdentity bassInstrument;
+    public InstrumentIdentity drumsInstrument;
+    public InstrumentIdentity keysInstrument;
+
     [Header("Global Controls")]
     public VRButton playAllButton;
     public VRButton stopAllButton;
@@ -51,6 +61,7 @@ public class MixerUI : MonoBehaviour
         }
 
         InitializeTrackRows();
+        InitializeSelectionButtons();
         InitializeGlobalControls();
         InitializeRecordingControls();
         UpdateSelectedInstrumentText();
@@ -112,6 +123,29 @@ public class MixerUI : MonoBehaviour
         }
     }
 
+    private void InitializeSelectionButtons()
+    {
+        if (selectGuitarButton != null)
+        {
+            selectGuitarButton.OnButtonPressed.AddListener(() => SelectInstrument(guitarInstrument, InstrumentType.Guitar));
+        }
+
+        if (selectBassButton != null)
+        {
+            selectBassButton.OnButtonPressed.AddListener(() => SelectInstrument(bassInstrument, InstrumentType.Bass));
+        }
+
+        if (selectDrumsButton != null)
+        {
+            selectDrumsButton.OnButtonPressed.AddListener(() => SelectInstrument(drumsInstrument, InstrumentType.Drums));
+        }
+
+        if (selectKeysButton != null)
+        {
+            selectKeysButton.OnButtonPressed.AddListener(() => SelectInstrument(keysInstrument, InstrumentType.Keys));
+        }
+    }
+
     /// <summary>
     /// Инициализирует глобальные контролы
     /// </summary>
@@ -168,6 +202,34 @@ public class MixerUI : MonoBehaviour
         {
             selectedInstrumentText.text = "Selected: None";
         }
+    }
+
+    private void SelectInstrument(InstrumentIdentity instrument, InstrumentType fallbackType)
+    {
+        InstrumentIdentity resolved = instrument != null ? instrument : FindInstrumentIdentity(fallbackType);
+        if (resolved == null)
+        {
+            Debug.LogWarning($"[MixerUI] InstrumentIdentity не найден для {fallbackType}");
+            return;
+        }
+
+        if (InstrumentSelector.I != null)
+        {
+            InstrumentSelector.I.Select(resolved);
+        }
+    }
+
+    private InstrumentIdentity FindInstrumentIdentity(InstrumentType type)
+    {
+        InstrumentIdentity[] allInstruments = FindObjectsOfType<InstrumentIdentity>();
+        foreach (var instrument in allInstruments)
+        {
+            if (instrument.type == type)
+            {
+                return instrument;
+            }
+        }
+        return null;
     }
 
     private void UpdateCountdownDisplay(float seconds)
