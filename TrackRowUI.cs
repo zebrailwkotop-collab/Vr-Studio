@@ -22,8 +22,6 @@ public class TrackRowUI : MonoBehaviour
     public VRButton stopButton;
 
     [Header("UI Elements - Recording")]
-    public VRButton startRecordingButton;
-    public VRButton stopRecordingButton;
     public Image recordingIndicator;
 
     [Header("UI Elements - Selection")]
@@ -89,17 +87,6 @@ public class TrackRowUI : MonoBehaviour
         if (stopButton != null)
         {
             stopButton.OnButtonPressed.AddListener(OnStopPressed);
-        }
-
-        // Настраиваем кнопки записи
-        if (startRecordingButton != null)
-        {
-            startRecordingButton.OnButtonPressed.AddListener(OnStartRecordingPressed);
-        }
-
-        if (stopRecordingButton != null)
-        {
-            stopRecordingButton.OnButtonPressed.AddListener(OnStopRecordingPressed);
         }
 
         // Настраиваем кнопку выбора инструмента
@@ -264,60 +251,6 @@ public class TrackRowUI : MonoBehaviour
 
         isPlaying = false;
         Debug.Log($"[TrackRowUI] Stopped {instrumentType}");
-    }
-
-    /// <summary>
-    /// Обработчик кнопки Start Recording
-    /// </summary>
-    private void OnStartRecordingPressed()
-    {
-        RecordController recordController = FindObjectOfType<RecordController>();
-        if (recordController == null)
-        {
-            Debug.LogWarning("[TrackRowUI] RecordController не найден.");
-            return;
-        }
-
-        if (recordController.IsRecording)
-        {
-            Debug.LogWarning("[TrackRowUI] Запись уже идет.");
-            return;
-        }
-
-        InstrumentIdentity instrument = FindInstrumentIdentity();
-        if (instrument == null)
-        {
-            Debug.LogWarning($"[TrackRowUI] InstrumentIdentity не найден для {instrumentType}");
-            return;
-        }
-
-        if (InstrumentSelector.I != null)
-        {
-            InstrumentSelector.I.Select(instrument);
-        }
-
-        recordController.StartRecordingSelected();
-    }
-
-    /// <summary>
-    /// Обработчик кнопки Stop Recording
-    /// </summary>
-    private void OnStopRecordingPressed()
-    {
-        RecordController recordController = FindObjectOfType<RecordController>();
-        if (recordController == null)
-        {
-            Debug.LogWarning("[TrackRowUI] RecordController не найден.");
-            return;
-        }
-
-        if (!recordController.IsRecording)
-        {
-            Debug.LogWarning("[TrackRowUI] Запись не идет.");
-            return;
-        }
-
-        recordController.StopRecording();
     }
 
     /// <summary>
