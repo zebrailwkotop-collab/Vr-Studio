@@ -21,9 +21,11 @@ public class TrackRowUI : MonoBehaviour
     public VRButton playButton;
     public VRButton stopButton;
 
-    [Header("UI Elements - Other")]
-    public VRButton muteButton;
+    [Header("UI Elements - Recording")]
     public Image recordingIndicator;
+
+    [Header("UI Elements - Selection")]
+    public VRButton selectInstrumentButton;
 
     [Header("Settings")]
     [Tooltip("Шаг изменения Pan при нажатии кнопки (в процентах)")]
@@ -37,11 +39,9 @@ public class TrackRowUI : MonoBehaviour
 
     [Header("Colors")]
     public Color normalColor = Color.white;
-    public Color mutedColor = Color.gray;
     public Color recordingColor = Color.red;
 
     private InstrumentType instrumentType;
-    private bool isMuted = false;
     private float currentPanPercent = 50f; // Начальное значение: 50% (центр)
     private bool isPlaying = false;
 
@@ -89,10 +89,10 @@ public class TrackRowUI : MonoBehaviour
             stopButton.OnButtonPressed.AddListener(OnStopPressed);
         }
 
-        // Настраиваем кнопку Mute
-        if (muteButton != null)
+        // Настраиваем кнопку выбора инструмента
+        if (selectInstrumentButton != null)
         {
-            muteButton.OnButtonPressed.AddListener(OnMutePressed);
+            selectInstrumentButton.OnButtonPressed.AddListener(OnSelectInstrumentPressed);
         }
 
         // Инициализируем индикаторы
@@ -254,20 +254,20 @@ public class TrackRowUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработчик кнопки Mute
+    /// Обработчик кнопки выбора инструмента
     /// </summary>
-    private void OnMutePressed()
+    private void OnSelectInstrumentPressed()
     {
-        isMuted = !isMuted;
-        if (MixerController.I != null)
+        InstrumentIdentity instrument = FindInstrumentIdentity();
+        if (instrument == null)
         {
-            MixerController.I.SetMute(instrumentType, isMuted);
+            Debug.LogWarning($"[TrackRowUI] InstrumentIdentity не найден для {instrumentType}");
+            return;
         }
 
-        // Визуальная обратная связь
-        if (trackNameText != null)
+        if (InstrumentSelector.I != null)
         {
-            trackNameText.color = isMuted ? mutedColor : normalColor;
+            InstrumentSelector.I.Select(instrument);
         }
     }
 
@@ -340,5 +340,21 @@ public class TrackRowUI : MonoBehaviour
     public float GetPanPercent()
     {
         return currentPanPercent;
+    }
+
+    /// <summary>
+    /// Находит InstrumentIdentity по типу инструмента
+    /// </summary>
+    private InstrumentIdentity FindInstrumentIdentity()
+    {
+        InstrumentIdentity[] allInstruments = FindObjectsOfType<InstrumentIdentity>();
+        foreach (var instrument in allInstruments)
+        {
+            if (instrument.type == instrumentType)
+            {
+                return instrument;
+            }
+        }
+        return null;
     }
 }
