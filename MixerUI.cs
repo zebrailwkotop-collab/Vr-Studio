@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
@@ -14,19 +13,63 @@ public class MixerUI : MonoBehaviour
     public TrackRowUI drumsRow;
     public TrackRowUI keysRow;
 
-    [Header("Master Controls")]
-    public Slider masterVolumeSlider;
-    public TextMeshProUGUI masterVolumeText;
+    [Header("Instrument Selection Buttons")]
+    public VRButton selectGuitarButton;
+    public VRButton selectBassButton;
+    public VRButton selectDrumsButton;
+    public VRButton selectKeysButton;
+    public InstrumentIdentity guitarInstrument;
+    public InstrumentIdentity bassInstrument;
+    public InstrumentIdentity drumsInstrument;
+    public InstrumentIdentity keysInstrument;
 
     [Header("Global Controls")]
     public VRButton playAllButton;
     public VRButton stopAllButton;
 
+    [Header("Recording Controls")]
+    public TextMeshProUGUI selectedInstrumentText;
+    public TextMeshProUGUI countdownText;
+    public VRButton startRecordingButton;
+    public VRButton stopRecordingButton;
+    public VRButton addTimeButton;
+    public VRButton subtractTimeButton;
+
+    [Header("Recording Settings")]
+    public float countdownSeconds = 5f;
+    public float minCountdownSeconds = 1f;
+    public float maxCountdownSeconds = 30f;
+    public float countdownStepSeconds = 1f;
+
+    public RecordSystem recordSystem;
+
+    private RecordController recordController;
+
     void Start()
     {
+        recordController = FindObjectOfType<RecordController>();
+        if (recordSystem == null)
+        {
+            recordSystem = FindObjectOfType<RecordSystem>();
+        }
+
+        if (recordSystem != null)
+        {
+            recordSystem.SetRecordController(recordController);
+            recordSystem.defaultCountdownSeconds = countdownSeconds;
+        }
+
         InitializeTrackRows();
-        InitializeMasterControls();
+        InitializeSelectionButtons();
         InitializeGlobalControls();
+        InitializeRecordingControls();
+        UpdateSelectedInstrumentText();
+        UpdateCountdownDisplay(countdownSeconds);
+
+        if (stopRecordingButton != null)
+        {
+            stopRecordingButton.gameObject.SetActive(true);
+        }
     }
 
     void Update()
@@ -36,6 +79,24 @@ public class MixerUI : MonoBehaviour
         
         // Обновляем состояние воспроизведения
         UpdatePlaybackStates();
+
+        UpdateSelectedInstrumentText();
+    }
+
+    private void OnEnable()
+    {
+        if (recordSystem != null)
+        {
+            recordSystem.CountdownUpdated += UpdateCountdownDisplay;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (recordSystem != null)
+        {
+            recordSystem.CountdownUpdated -= UpdateCountdownDisplay;
+        }
     }
 
     /// <summary>
@@ -61,18 +122,26 @@ public class MixerUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Инициализирует мастер-контролы
-    /// </summary>
-    private void InitializeMasterControls()
+    private void InitializeSelectionButtons()
     {
-        if (masterVolumeSlider != null)
+        if (selectGuitarButton != null)
         {
-            masterVolumeSlider.minValue = 0f;
-            masterVolumeSlider.maxValue = 1f;
-            masterVolumeSlider.value = 1f;
-            masterVolumeSlider.onValueChanged.AddListener(OnMasterVolumeChanged);
-            UpdateMasterVolumeText(1f);
+            selectGuitarButton.OnButtonPressed.AddListener(() => SelectInstrument(guitarInstrument, InstrumentType.Guitar));
+        }
+
+        if (selectBassButton != null)
+        {
+            selectBassButton.OnButtonPressed.AddListener(() => SelectInstrument(bassInstrument, InstrumentType.Bass));
+        }
+
+        if (selectDrumsButton != null)
+        {
+            selectDrumsButton.OnButtonPressed.AddListener(() => SelectInstrument(drumsInstrument, InstrumentType.Drums));
+        }
+
+        if (selectKeysButton != null)
+        {
+            selectKeysButton.OnButtonPressed.AddListener(() => SelectInstrument(keysInstrument, InstrumentType.Keys));
         }
     }
 
@@ -93,26 +162,130 @@ public class MixerUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработчик изменения мастер-громкости
+    /// Инициализирует контролы записи
     /// </summary>
-    private void OnMasterVolumeChanged(float value)
+    private void InitializeRecordingControls()
     {
-        if (MixerController.I != null)
+        if (startRecordingButton != null)
         {
-            MixerController.I.SetMasterVolume(value);
+            startRecordingButton.OnButtonPressed.AddListener(OnStartRecordingPressed);
         }
-        UpdateMasterVolumeText(value);
+
+        if (stopRecordingButton != null)
+        {
+            stopRecordingButton.OnButtonPressed.AddListener(OnStopRecordingPressed);
+        }
+
+        if (addTimeButton != null)
+        {
+            addTimeButton.OnButtonPressed.AddListener(OnAddTimePressed);
+        }
+
+        if (subtractTimeButton != null)
+        {
+            subtractTimeButton.OnButtonPressed.AddListener(OnSubtractTimePressed);
+        }
+
+        UpdateCountdownDisplay(countdownSeconds);
     }
 
-    /// <summary>
-    /// Обновляет текст мастер-громкости
-    /// </summary>
-    private void UpdateMasterVolumeText(float value)
+    private void UpdateSelectedInstrumentText()
     {
-        if (masterVolumeText != null)
+        if (selectedInstrumentText == null) return;
+
+        if (InstrumentSelector.I != null && InstrumentSelector.I.HasSelection)
         {
-            masterVolumeText.text = $"Master: {(value * 100f):F0}%";
+            selectedInstrumentText.text = $"Selected: {InstrumentSelector.I.Current.type}";
         }
+        else
+        {
+            selectedInstrumentText.text = "Selected: None";
+        }
+    }
+
+    private void SelectInstrument(InstrumentIdentity instrument, InstrumentType fallbackType)
+    {
+        InstrumentIdentity resolved = instrument != null ? instrument : FindInstrumentIdentity(fallbackType);
+        if (resolved == null)
+        {
+            Debug.LogWarning($"[MixerUI] InstrumentIdentity не найден для {fallbackType}");
+            return;
+        }
+
+        if (InstrumentSelector.I != null)
+        {
+            InstrumentSelector.I.Select(resolved);
+        }
+    }
+
+    private InstrumentIdentity FindInstrumentIdentity(InstrumentType type)
+    {
+        InstrumentIdentity[] allInstruments = FindObjectsOfType<InstrumentIdentity>();
+        foreach (var instrument in allInstruments)
+        {
+            if (instrument.type == type)
+            {
+                return instrument;
+            }
+        }
+        return null;
+    }
+
+    private void UpdateCountdownDisplay(float seconds)
+    {
+        if (countdownText == null) return;
+
+        int minutes = Mathf.FloorToInt(seconds / 60f);
+        int secs = Mathf.FloorToInt(seconds % 60f);
+        countdownText.text = $"{minutes:00}:{secs:00}";
+    }
+
+    private void OnAddTimePressed()
+    {
+        if (recordSystem != null && recordSystem.IsCountingDown) return;
+
+        countdownSeconds = Mathf.Min(maxCountdownSeconds, countdownSeconds + countdownStepSeconds);
+        UpdateCountdownDisplay(countdownSeconds);
+        if (recordSystem != null)
+        {
+            recordSystem.defaultCountdownSeconds = countdownSeconds;
+        }
+    }
+
+    private void OnSubtractTimePressed()
+    {
+        if (recordSystem != null && recordSystem.IsCountingDown) return;
+
+        countdownSeconds = Mathf.Max(minCountdownSeconds, countdownSeconds - countdownStepSeconds);
+        UpdateCountdownDisplay(countdownSeconds);
+        if (recordSystem != null)
+        {
+            recordSystem.defaultCountdownSeconds = countdownSeconds;
+        }
+    }
+
+    private void OnStartRecordingPressed()
+    {
+        if (recordSystem == null)
+        {
+            Debug.LogWarning("[MixerUI] RecordSystem не найден.");
+            return;
+        }
+
+        recordSystem.defaultCountdownSeconds = countdownSeconds;
+        recordSystem.StartRecordingWithCountdown(countdownSeconds);
+    }
+
+    private void OnStopRecordingPressed()
+    {
+        if (recordSystem == null)
+        {
+            Debug.LogWarning("[MixerUI] RecordSystem не найден.");
+            return;
+        }
+
+        recordSystem.StopRecording();
+        UpdateCountdownDisplay(countdownSeconds);
     }
 
     /// <summary>
