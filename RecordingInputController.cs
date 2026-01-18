@@ -15,11 +15,6 @@ public class RecordingInputController : MonoBehaviour
     public SteamVR_Action_Boolean togglePlaybackAction;
     public SteamVR_Input_Sources inputSource = SteamVR_Input_Sources.Any;
 
-    [Header("Keyboard Fallback")]
-    public KeyCode startKey = KeyCode.R;
-    public KeyCode stopKey = KeyCode.T;
-    public KeyCode playbackKey = KeyCode.P;
-
     private void Reset()
     {
         recordController = FindObjectOfType<RecordController>();
@@ -50,20 +45,17 @@ public class RecordingInputController : MonoBehaviour
 
     private bool IsStartRecordingPressed()
     {
-        return (startRecordingAction != null && startRecordingAction.GetStateDown(inputSource))
-               || (startKey != KeyCode.None && Input.GetKeyDown(startKey));
+        return startRecordingAction != null && startRecordingAction.GetStateDown(inputSource);
     }
 
     private bool IsStopRecordingPressed()
     {
-        return (stopRecordingAction != null && stopRecordingAction.GetStateDown(inputSource))
-               || (stopKey != KeyCode.None && Input.GetKeyDown(stopKey));
+        return stopRecordingAction != null && stopRecordingAction.GetStateDown(inputSource);
     }
 
     private bool IsTogglePlaybackPressed()
     {
-        return (togglePlaybackAction != null && togglePlaybackAction.GetStateDown(inputSource))
-               || (playbackKey != KeyCode.None && Input.GetKeyDown(playbackKey));
+        return togglePlaybackAction != null && togglePlaybackAction.GetStateDown(inputSource);
     }
 
     private void StartRecording()
