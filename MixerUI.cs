@@ -32,18 +32,34 @@ public class MixerUI : MonoBehaviour
     public float maxCountdownSeconds = 30f;
     public float countdownStepSeconds = 1f;
 
+    public RecordSystem recordSystem;
+
     private RecordController recordController;
-    private Coroutine countdownRoutine;
-    private bool isCountingDown = false;
 
     void Start()
     {
         recordController = FindObjectOfType<RecordController>();
+        if (recordSystem == null)
+        {
+            recordSystem = FindObjectOfType<RecordSystem>();
+        }
+
+        if (recordSystem != null)
+        {
+            recordSystem.SetRecordController(recordController);
+            recordSystem.defaultCountdownSeconds = countdownSeconds;
+        }
+
         InitializeTrackRows();
         InitializeGlobalControls();
         InitializeRecordingControls();
         UpdateSelectedInstrumentText();
         UpdateCountdownDisplay(countdownSeconds);
+
+        if (stopRecordingButton != null)
+        {
+            stopRecordingButton.gameObject.SetActive(true);
+        }
     }
 
     void Update()
@@ -55,6 +71,22 @@ public class MixerUI : MonoBehaviour
         UpdatePlaybackStates();
 
         UpdateSelectedInstrumentText();
+    }
+
+    private void OnEnable()
+    {
+        if (recordSystem != null)
+        {
+            recordSystem.CountdownUpdated += UpdateCountdownDisplay;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (recordSystem != null)
+        {
+            recordSystem.CountdownUpdated -= UpdateCountdownDisplay;
+        }
     }
 
     /// <summary>
@@ -149,100 +181,50 @@ public class MixerUI : MonoBehaviour
 
     private void OnAddTimePressed()
     {
-        if (isCountingDown) return;
+        if (recordSystem != null && recordSystem.IsCountingDown) return;
 
         countdownSeconds = Mathf.Min(maxCountdownSeconds, countdownSeconds + countdownStepSeconds);
         UpdateCountdownDisplay(countdownSeconds);
+        if (recordSystem != null)
+        {
+            recordSystem.defaultCountdownSeconds = countdownSeconds;
+        }
     }
 
     private void OnSubtractTimePressed()
     {
-        if (isCountingDown) return;
+        if (recordSystem != null && recordSystem.IsCountingDown) return;
 
         countdownSeconds = Mathf.Max(minCountdownSeconds, countdownSeconds - countdownStepSeconds);
         UpdateCountdownDisplay(countdownSeconds);
+        if (recordSystem != null)
+        {
+            recordSystem.defaultCountdownSeconds = countdownSeconds;
+        }
     }
 
     private void OnStartRecordingPressed()
     {
-        if (recordController == null)
+        if (recordSystem == null)
         {
-            recordController = FindObjectOfType<RecordController>();
-        }
-
-        if (recordController == null)
-        {
-            Debug.LogWarning("[MixerUI] RecordController не найден.");
+            Debug.LogWarning("[MixerUI] RecordSystem не найден.");
             return;
         }
 
-        if (recordController.IsRecording || isCountingDown)
-        {
-            Debug.LogWarning("[MixerUI] Запись уже идет или идет отсчет.");
-            return;
-        }
-
-        if (InstrumentSelector.I == null || !InstrumentSelector.I.HasSelection)
-        {
-            Debug.LogWarning("[MixerUI] Нет выбранного инструмента для записи.");
-            return;
-        }
-
-        countdownRoutine = StartCoroutine(StartCountdownAndRecord());
+        recordSystem.defaultCountdownSeconds = countdownSeconds;
+        recordSystem.StartRecordingWithCountdown(countdownSeconds);
     }
 
     private void OnStopRecordingPressed()
     {
-        if (countdownRoutine != null)
+        if (recordSystem == null)
         {
-            StopCoroutine(countdownRoutine);
-            countdownRoutine = null;
-            isCountingDown = false;
-            UpdateCountdownDisplay(countdownSeconds);
-        }
-
-        if (recordController == null)
-        {
-            recordController = FindObjectOfType<RecordController>();
-        }
-
-        if (recordController == null)
-        {
-            Debug.LogWarning("[MixerUI] RecordController не найден.");
+            Debug.LogWarning("[MixerUI] RecordSystem не найден.");
             return;
         }
 
-        if (!recordController.IsRecording)
-        {
-            Debug.LogWarning("[MixerUI] Запись не идет.");
-            return;
-        }
-
-        recordController.StopRecording();
-    }
-
-    private IEnumerator StartCountdownAndRecord()
-    {
-        isCountingDown = true;
-        float remaining = Mathf.Clamp(countdownSeconds, minCountdownSeconds, maxCountdownSeconds);
-
-        while (remaining > 0f)
-        {
-            UpdateCountdownDisplay(remaining);
-            remaining -= Time.deltaTime;
-            yield return null;
-        }
-
-        UpdateCountdownDisplay(0f);
-
-        if (recordController != null)
-        {
-            recordController.countdownSeconds = 0f;
-            recordController.StartRecordingSelected();
-        }
-
-        isCountingDown = false;
-        countdownRoutine = null;
+        recordSystem.StopRecording();
+        UpdateCountdownDisplay(countdownSeconds);
     }
 
     /// <summary>

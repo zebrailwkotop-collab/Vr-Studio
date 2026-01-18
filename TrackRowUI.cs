@@ -26,6 +26,7 @@ public class TrackRowUI : MonoBehaviour
 
     [Header("UI Elements - Selection")]
     public VRButton selectInstrumentButton;
+    public InstrumentIdentity instrumentIdentity;
 
     [Header("Settings")]
     [Tooltip("Шаг изменения Pan при нажатии кнопки (в процентах)")]
@@ -258,7 +259,7 @@ public class TrackRowUI : MonoBehaviour
     /// </summary>
     private void OnSelectInstrumentPressed()
     {
-        InstrumentIdentity instrument = FindInstrumentIdentity();
+        InstrumentIdentity instrument = instrumentIdentity != null ? instrumentIdentity : FindInstrumentIdentity();
         if (instrument == null)
         {
             Debug.LogWarning($"[TrackRowUI] InstrumentIdentity не найден для {instrumentType}");

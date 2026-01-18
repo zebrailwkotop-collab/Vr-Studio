@@ -8,6 +8,7 @@ public class RecordingInputController : MonoBehaviour
 {
     [Header("References")]
     public RecordController recordController;
+    public RecordSystem recordSystem;
 
     [Header("SteamVR Actions")]
     public SteamVR_Action_Boolean startRecordingAction;
@@ -18,6 +19,7 @@ public class RecordingInputController : MonoBehaviour
     private void Reset()
     {
         recordController = FindObjectOfType<RecordController>();
+        recordSystem = FindObjectOfType<RecordSystem>();
     }
 
     private void Update()
@@ -25,6 +27,11 @@ public class RecordingInputController : MonoBehaviour
         if (recordController == null)
         {
             recordController = FindObjectOfType<RecordController>();
+        }
+
+        if (recordSystem == null)
+        {
+            recordSystem = FindObjectOfType<RecordSystem>();
         }
 
         if (IsStartRecordingPressed())
@@ -60,6 +67,12 @@ public class RecordingInputController : MonoBehaviour
 
     private void StartRecording()
     {
+        if (recordSystem != null)
+        {
+            recordSystem.StartRecordingWithDefaultCountdown();
+            return;
+        }
+
         if (recordController == null)
         {
             Debug.LogWarning("RecordController не найден.");
@@ -83,6 +96,12 @@ public class RecordingInputController : MonoBehaviour
 
     private void StopRecording()
     {
+        if (recordSystem != null)
+        {
+            recordSystem.StopRecording();
+            return;
+        }
+
         if (recordController == null)
         {
             Debug.LogWarning("RecordController не найден.");
